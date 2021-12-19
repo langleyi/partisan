@@ -1,7 +1,4 @@
-# partisan
-
-![Alt text](.github/logo.png)
-<img src=".github/logo.png">
+![the fucking massive partisan logo](.github/logo.png)
 
 partisan is a Python library for generating partial dependence plots. 
 
