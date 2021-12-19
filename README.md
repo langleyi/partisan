@@ -13,6 +13,7 @@ pip install partisan
 ## Usage
 
 ```python
+i will fill this in when it works...
 ```
 
 ## License
