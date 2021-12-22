@@ -53,38 +53,33 @@ class PDP:
         # iterate through dictionary and plot
         col_nums = 3  # how many plots per row
         row_nums = math.ceil(len(pd_dict) / col_nums)  # how many rows of plots
-        plt.figure(figsize=(10, 10))  # change the figure size as needed
+        plt.figure(figsize=(10, 7))  # change the figure size as needed
+        plt.rcParams.update({"font.sans-serif": "Arial"})
         for i, (k, v) in enumerate(pd_dict.items(), 1):
             ax1 = plt.subplot(row_nums, col_nums, i)
-            p = sns.lineplot(data=v, x=k, y="pred", ax=ax1)
+            p = sns.lineplot(data=v, x=k, y="pred", ax=ax1, color="tab:red")
+            p.set(xlabel=None)
             if is_numeric_dtype(self.X[k]):
                 if self.X[k].nunique() > 10:
-                    s = sns.histplot(
-                        data=self.X[
-                            (
-                                self.X[k].between(
-                                    self.X[k].quantile(0.05), self.X[k].quantile(0.95)
-                                )
-                            )
-                            & (self.X[k].nunique() > 10)
-                        ],
-                        x=k,
-                        alpha=0.01,
-                        kde=False,
-                        ax=ax1.twinx(),
-                    )
+                    data = self.X[
+                        self.X[k].between(
+                            self.X[k].quantile(0.05), self.X[k].quantile(0.95)
+                        )
+                    ]
                 else:
-                    s = sns.histplot(
-                        data=self.X,
-                        x=k,
-                        alpha=0.1,
-                        kde=False,
-                        ax=ax1.twinx(),
-                        color="k",
-                    )
+                    data = self.X
 
-            plt.title(f"DataFrame: {k}")
-            plt.ylabel("")
+                sns.histplot(
+                    data=data,
+                    x=k,
+                    alpha=0.1,
+                    kde=False,
+                    ax=ax1.twinx(),
+                    color="k",
+                )
+
+            plt.title(f"{k}")
+            plt.ylabel(None)
             plt.yticks([])
 
         plt.tight_layout()
