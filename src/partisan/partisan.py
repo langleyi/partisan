@@ -43,23 +43,33 @@ class PDP:
                             _pd_df[feat].quantile(0.05), _pd_df[feat].quantile(0.95)
                         )
                     ]
-
-            pd_dict[feat] = _pd_df.groupby(feat)[["pred"]].mean()
+            pd_dict[feat] = (
+                _pd_df.groupby(feat)[["pred"]].mean().rename(columns={"pred": "PD"})
+            )
 
         return pd_dict
 
     def plot(self):
         pd_dict = self.values()
         # iterate through dictionary and plot
-        col_nums = 3  # how many plots per row
+        col_nums = 1  # how many plots per row
         row_nums = math.ceil(len(pd_dict) / col_nums)  # how many rows of plots
-        plt.figure(figsize=(10, 7))  # change the figure size as needed
+        plt.figure(
+            figsize=(5, np.floor((row_nums * 5) / 2.5))
+        )  # change the figure size as needed
         plt.rcParams.update({"font.sans-serif": "Arial"})
         for i, (k, v) in enumerate(pd_dict.items(), 1):
-            ax1 = plt.subplot(row_nums, col_nums, i)
-            p = sns.lineplot(data=v, x=k, y="pred", ax=ax1, color="tab:red")
-            p.set(xlabel=None)
             if is_numeric_dtype(self.X[k]):
+                ax1 = plt.subplot(row_nums, col_nums, i)
+                lp = sns.lineplot(
+                    data=v,
+                    x=k,
+                    y="PD",
+                    ax=ax1,
+                    color="tab:red",
+                )
+                lp.set(xlabel=None)
+
                 if self.X[k].nunique() > 10:
                     data = self.X[
                         self.X[k].between(
@@ -69,7 +79,7 @@ class PDP:
                 else:
                     data = self.X
 
-                sns.histplot(
+                hp = sns.histplot(
                     data=data,
                     x=k,
                     alpha=0.1,
@@ -77,26 +87,90 @@ class PDP:
                     ax=ax1.twinx(),
                     color="k",
                 )
+                hp.set_ylabel(None)
+                hp.set_xticks([])
+
+            elif is_string_dtype(self.X[k]) | is_categorical_dtype(self.X[k]):
+                top_n_vals = self.X[k].value_counts().head(10).index
+                data = v[v.index.isin(top_n_vals)]
+                ax1 = plt.subplot(row_nums, col_nums, i)
+                bp = sns.barplot(
+                    data=data.reset_index(),
+                    x="PD",
+                    y=k,
+                    color="tab:red",
+                    alpha=0.3,
+                    orient="h",
+                    ax=ax1,
+                )
+                bp.set_ylabel(None)
 
             plt.title(f"{k}")
-            plt.ylabel(None)
-            plt.yticks([])
+            # plt.yticks([])
 
         plt.tight_layout()
         plt.show()
 
 
+# # ALL NUMERICAL CLASSIFICATION
+# from sklearn.datasets import fetch_openml
+
+# X, y = fetch_openml("titanic", version=1, as_frame=True, return_X_y=True)
+# X["y"] = y
+# X = X.dropna(subset={"pclass", "age", "sibsp", "parch", "fare"})
+# y = X["y"]
+# X = X[["pclass", "age", "sibsp", "parch", "fare"]]
+
+# from sklearn.linear_model import LogisticRegression
+
+# clf = LogisticRegression(random_state=0).fit(X, y)
+# exp = PDP(clf, X)
+# exp.plot()
+
+# ALL NUMERICAL REGRESSION
+
+# from sklearn.datasets import fetch_openml
+
+# X, y = fetch_openml("titanic", version=1, as_frame=True, return_X_y=True)
+# X = X.dropna(subset={"pclass", "age", "sibsp", "parch", "fare"})
+# y = X["age"]
+# X = X[["pclass", "sibsp", "parch", "fare"]]
+# from sklearn.linear_model import LinearRegression
+
+# regr = LinearRegression().fit(X, y)
+# exp = PDP(regr, X)
+# exp.plot()
+
+# MIXED NUMERICAL + CATEGORICAL CLASSIFICATION
+import numpy as np
+from sklearn.compose import ColumnTransformer
 from sklearn.datasets import fetch_openml
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split, GridSearchCV
 
 X, y = fetch_openml("titanic", version=1, as_frame=True, return_X_y=True)
-X["y"] = y
-X = X.dropna(subset={"pclass", "age", "sibsp", "parch", "fare"})
-y = X["y"]
-X = X[["pclass", "age", "sibsp", "parch", "fare"]]
 
-from sklearn.linear_model import LogisticRegression
+numeric_features = ["age", "fare"]
+numeric_transformer = Pipeline(
+    steps=[("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())]
+)
 
-clf = LogisticRegression(random_state=0).fit(X, y)
+categorical_features = ["embarked", "sex", "pclass"]
+categorical_transformer = OneHotEncoder(handle_unknown="ignore")
 
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("num", numeric_transformer, numeric_features),
+        ("cat", categorical_transformer, categorical_features),
+    ]
+)
+clf = Pipeline(
+    steps=[("preprocessor", preprocessor), ("classifier", LogisticRegression())]
+)
+
+clf.fit(X, y)
 exp = PDP(clf, X)
 exp.plot()
