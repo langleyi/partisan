@@ -7,7 +7,7 @@ partisan is a Python library for generating partial dependence plots.
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install partisan.
 
 ```bash
-pip install partisan
+pip install partisan #doesn't work yet
 ```
 
 ## Usage
